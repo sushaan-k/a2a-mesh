@@ -344,7 +344,9 @@ class TestGatewayAuth:
 
     def test_auth_required_when_manager_is_configured(self) -> None:
         mesh = Mesh(port=9997, log_level="WARNING")
-        mesh.register(AgentCard(name="auth-agent", capabilities=["testing"], auth_required=True))
+        mesh.register(
+            AgentCard(name="auth-agent", capabilities=["testing"], auth_required=True)
+        )
         auth_manager = AuthManager(secret="test-secret-key-for-testing-abcde")
         app = create_gateway(mesh, auth_manager=auth_manager)
         client = TestClient(app)

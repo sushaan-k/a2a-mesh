@@ -174,7 +174,11 @@ class Mesh:
     def cancel_task(self, task_id: str) -> Task:
         """Cancel a tracked task when it has not yet completed."""
         task = self.get_task(task_id)
-        if task.status in {TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED}:
+        if task.status in {
+            TaskStatus.COMPLETED,
+            TaskStatus.FAILED,
+            TaskStatus.CANCELLED,
+        }:
             return task
 
         task.status = TaskStatus.CANCELLED

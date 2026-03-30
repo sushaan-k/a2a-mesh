@@ -13,7 +13,7 @@ Think of it as **Kubernetes for agents**, but small enough to read in an afterno
 
 ---
 
-## Why a2a-mesh?
+## At a Glance
 
 | Problem | a2a-mesh Solution |
 |---|---|
@@ -22,8 +22,6 @@ Think of it as **Kubernetes for agents**, but small enough to read in an afterno
 | Building multi-agent workflows is painful | **Workflow DAGs** with fan-out, fan-in, and consensus |
 | Agent-to-agent auth is unsolved | **Scoped JWT tokens** with audit logging |
 | No visibility into agent interactions | **OpenTelemetry tracing** with per-span cost tracking |
-
----
 
 ## Quick Start
 

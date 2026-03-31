@@ -48,6 +48,7 @@ class TaskStatus(StrEnum):
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
+    TIMED_OUT = "timed_out"
 
 
 class RoutingStrategy(StrEnum):
@@ -58,6 +59,7 @@ class RoutingStrategy(StrEnum):
     LEAST_LATENCY = "least_latency"
     LEAST_LOAD = "least_load"
     RANDOM = "random"
+    HEALTH_SCORE = "health_score"
 
 
 class FanInStrategy(StrEnum):
@@ -130,7 +132,7 @@ class RegisteredAgent(BaseModel):
     """Internal representation of an agent registered in the mesh.
 
     Extends the agent card with runtime state: current load, health status,
-    latency measurements, and registration timestamps.
+    latency measurements, health score, and registration timestamps.
 
     Attributes:
         agent_id: Unique identifier assigned at registration.
@@ -138,6 +140,9 @@ class RegisteredAgent(BaseModel):
         status: Current health status.
         current_load: Number of in-flight tasks.
         avg_latency_ms: Exponential moving average of response latency.
+        health_score: Composite score 0.0-1.0 that degrades on failures.
+        total_requests: Lifetime request count for this agent.
+        total_failures: Lifetime failure count for this agent.
         registered_at: When the agent was registered.
         last_health_check: Timestamp of the last successful health check.
     """
@@ -147,6 +152,9 @@ class RegisteredAgent(BaseModel):
     status: AgentStatus = AgentStatus.UNKNOWN
     current_load: int = 0
     avg_latency_ms: float = 0.0
+    health_score: float = 1.0
+    total_requests: int = 0
+    total_failures: int = 0
     registered_at: datetime = Field(default_factory=_utcnow)
     last_health_check: datetime | None = None
 

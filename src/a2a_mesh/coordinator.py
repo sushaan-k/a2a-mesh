@@ -15,6 +15,7 @@ from typing import Any
 
 from a2a_mesh._logging import get_logger
 from a2a_mesh.exceptions import (
+    BudgetExceededError,
     ConsensusNotReachedError,
     CyclicDependencyError,
     TaskExecutionError,
@@ -56,7 +57,12 @@ class WorkflowCoordinator:
         """
         self.executor = executor
 
-    async def execute(self, workflow: Workflow) -> WorkflowResult:
+    async def execute(
+        self,
+        workflow: Workflow,
+        timeout: float | None = None,
+        max_cost: float | None = None,
+    ) -> WorkflowResult:
         """Execute a complete workflow.
 
         Tasks are scheduled according to their dependency graph. Independent
@@ -65,6 +71,11 @@ class WorkflowCoordinator:
 
         Args:
             workflow: The workflow to execute.
+            timeout: Optional timeout in seconds. When reached, the workflow
+                returns partial results for completed tasks and marks
+                incomplete ones with a ``TIMED_OUT`` status.
+            max_cost: Optional cost budget. When cumulative task cost exceeds
+                this value a ``BudgetExceededError`` is raised.
 
         Returns:
             A WorkflowResult containing all task outputs and metadata.
@@ -72,6 +83,7 @@ class WorkflowCoordinator:
         Raises:
             CyclicDependencyError: If the dependency graph has cycles.
             TaskExecutionError: If a task fails and cannot be recovered.
+            BudgetExceededError: If cumulative cost exceeds *max_cost*.
         """
         execution_order = self._topological_sort(workflow)
         logger.info(
@@ -90,15 +102,40 @@ class WorkflowCoordinator:
         # Group tasks into levels (tasks at the same level have no
         # dependencies on each other and can run concurrently)
         levels = self._build_levels(execution_order, workflow)
+        timed_out = False
 
         for level in levels:
+            if timed_out:
+                break
+
             coros = []
             for task in level:
                 # Inject upstream results as input
                 task = self._inject_dependencies(task, task_results)
                 coros.append(self._execute_task(task, workflow, task_results))
 
-            level_results = await asyncio.gather(*coros, return_exceptions=True)
+            try:
+                if timeout is not None:
+                    elapsed = (datetime.now(UTC) - result.started_at).total_seconds()
+                    remaining = max(0.0, timeout - elapsed)
+                    level_results = await asyncio.wait_for(
+                        asyncio.gather(*coros, return_exceptions=True),
+                        timeout=remaining,
+                    )
+                else:
+                    level_results = await asyncio.gather(*coros, return_exceptions=True)
+            except TimeoutError:
+                timed_out = True
+                # Mark incomplete tasks in this level as cancelled
+                for task in level:
+                    if task.status not in {
+                        TaskStatus.COMPLETED,
+                        TaskStatus.FAILED,
+                    }:
+                        task.status = TaskStatus.TIMED_OUT
+                        task.error = "Workflow timeout reached"
+                        result.errors[task.name] = "Workflow timeout reached"
+                break
 
             for task, res in zip(level, level_results, strict=True):
                 if isinstance(res, BaseException):
@@ -114,6 +151,33 @@ class WorkflowCoordinator:
                     result.completed_at = datetime.now(UTC)
                     result.task_results = task_results
                     return result
+
+            # Enforce cost budget after each level
+            if max_cost is not None:
+                cumulative = sum(t.cost for t in workflow.tasks if t.cost > 0)
+                if cumulative > max_cost:
+                    raise BudgetExceededError(budget=max_cost, spent=cumulative)
+
+        if timed_out:
+            # Mark all remaining un-started tasks as cancelled
+            completed_names = set(task_results.keys())
+            for task in workflow.tasks:
+                if task.name not in completed_names and task.name not in result.errors:
+                    task.status = TaskStatus.TIMED_OUT
+                    task.error = "Workflow timeout reached"
+                    result.errors[task.name] = "Workflow timeout reached"
+
+            result.status = TaskStatus.TIMED_OUT
+            result.task_results = task_results
+            result.total_cost = sum(t.cost for t in workflow.tasks if t.cost > 0)
+            result.completed_at = datetime.now(UTC)
+            logger.info(
+                "workflow.timeout",
+                workflow_id=workflow.workflow_id,
+                completed_tasks=len(task_results),
+                total_tasks=len(workflow.tasks),
+            )
+            return result
 
         result.task_results = task_results
         result.total_cost = sum(t.cost for t in workflow.tasks if t.cost > 0)

@@ -127,6 +127,17 @@ class ConsensusNotReachedError(WorkflowError):
         )
 
 
+class BudgetExceededError(WorkflowError):
+    """Raised when cumulative task cost exceeds the allowed budget."""
+
+    def __init__(self, budget: float, spent: float) -> None:
+        self.budget = budget
+        self.spent = spent
+        super().__init__(
+            f"Budget exceeded: spent ${spent:.4f} of ${budget:.4f} allowed",
+        )
+
+
 # ---------------------------------------------------------------------------
 # Auth errors
 # ---------------------------------------------------------------------------

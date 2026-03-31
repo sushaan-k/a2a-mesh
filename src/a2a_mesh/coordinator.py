@@ -15,6 +15,7 @@ from typing import Any
 
 from a2a_mesh._logging import get_logger
 from a2a_mesh.exceptions import (
+    BudgetExceededError,
     ConsensusNotReachedError,
     CyclicDependencyError,
     TaskExecutionError,
@@ -60,6 +61,7 @@ class WorkflowCoordinator:
         self,
         workflow: Workflow,
         timeout: float | None = None,
+        max_cost: float | None = None,
     ) -> WorkflowResult:
         """Execute a complete workflow.
 
@@ -72,6 +74,8 @@ class WorkflowCoordinator:
             timeout: Optional timeout in seconds. When reached, the workflow
                 returns partial results for completed tasks and marks
                 incomplete ones with a ``CANCELLED`` status.
+            max_cost: Optional cost budget. When cumulative task cost exceeds
+                this value a ``BudgetExceededError`` is raised.
 
         Returns:
             A WorkflowResult containing all task outputs and metadata.
@@ -79,6 +83,7 @@ class WorkflowCoordinator:
         Raises:
             CyclicDependencyError: If the dependency graph has cycles.
             TaskExecutionError: If a task fails and cannot be recovered.
+            BudgetExceededError: If cumulative cost exceeds *max_cost*.
         """
         execution_order = self._topological_sort(workflow)
         logger.info(
@@ -150,6 +155,12 @@ class WorkflowCoordinator:
                     result.completed_at = datetime.now(UTC)
                     result.task_results = task_results
                     return result
+
+            # Enforce cost budget after each level
+            if max_cost is not None:
+                cumulative = sum(t.cost for t in workflow.tasks if t.cost > 0)
+                if cumulative > max_cost:
+                    raise BudgetExceededError(budget=max_cost, spent=cumulative)
 
         if timed_out:
             # Mark all remaining un-started tasks as cancelled

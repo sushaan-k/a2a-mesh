@@ -482,6 +482,7 @@ class TestWorkflowTimeout:
         assert "fast" in result.task_results
         # slow should be marked as timed out
         assert "slow" in result.errors
+        assert result.status == TaskStatus.TIMED_OUT
 
     @pytest.mark.asyncio
     async def test_no_timeout_completes_normally(self) -> None:
@@ -535,3 +536,4 @@ class TestWorkflowTimeout:
         assert len(result.errors) >= 1
         # No task results since first level timed out
         assert result.task_results == {} or len(result.task_results) < 3
+        assert result.status == TaskStatus.TIMED_OUT

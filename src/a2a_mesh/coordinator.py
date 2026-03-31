@@ -73,7 +73,7 @@ class WorkflowCoordinator:
             workflow: The workflow to execute.
             timeout: Optional timeout in seconds. When reached, the workflow
                 returns partial results for completed tasks and marks
-                incomplete ones with a ``CANCELLED`` status.
+                incomplete ones with a ``TIMED_OUT`` status.
             max_cost: Optional cost budget. When cumulative task cost exceeds
                 this value a ``BudgetExceededError`` is raised.
 
@@ -136,7 +136,7 @@ class WorkflowCoordinator:
                         TaskStatus.COMPLETED,
                         TaskStatus.FAILED,
                     }:
-                        task.status = TaskStatus.CANCELLED
+                        task.status = TaskStatus.TIMED_OUT
                         task.error = "Workflow timeout reached"
                         result.errors[task.name] = "Workflow timeout reached"
                 break
@@ -167,11 +167,11 @@ class WorkflowCoordinator:
             completed_names = set(task_results.keys())
             for task in workflow.tasks:
                 if task.name not in completed_names and task.name not in result.errors:
-                    task.status = TaskStatus.CANCELLED
+                    task.status = TaskStatus.TIMED_OUT
                     task.error = "Workflow timeout reached"
                     result.errors[task.name] = "Workflow timeout reached"
 
-            result.status = TaskStatus.COMPLETED
+            result.status = TaskStatus.TIMED_OUT
             result.task_results = task_results
             result.total_cost = sum(t.cost for t in workflow.tasks if t.cost > 0)
             result.completed_at = datetime.now(UTC)

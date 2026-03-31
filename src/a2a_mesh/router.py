@@ -189,6 +189,9 @@ class Router:
         if strategy == RoutingStrategy.RANDOM:
             return random.choice(list(agents))
 
+        if strategy == RoutingStrategy.HEALTH_SCORE:
+            return max(agents, key=lambda a: a.health_score)
+
         # Default fallback
         return agents[0]
 
@@ -214,6 +217,9 @@ class Router:
 
         if strategy == RoutingStrategy.LEAST_LATENCY:
             return sorted(agents, key=lambda a: a.avg_latency_ms)
+
+        if strategy == RoutingStrategy.HEALTH_SCORE:
+            return sorted(agents, key=lambda a: a.health_score, reverse=True)
 
         return list(agents)
 

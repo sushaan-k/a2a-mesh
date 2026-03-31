@@ -211,7 +211,9 @@ class TestMeshLifecycle:
         await mesh.stop()
         assert len(mesh._a2a_clients) == 0
 
-    def test_serve_wires_auth_and_host(self, mesh: Mesh, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_serve_wires_auth_and_host(
+        self, mesh: Mesh, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         captured: dict[str, object] = {}
 
         def fake_create_gateway(*args: object, **kwargs: object) -> object:

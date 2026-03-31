@@ -132,9 +132,7 @@ async def main() -> None:
     print(f"\nIssued scoped token for fixer-agent: {token.token[:40]}...")
 
     # Validate the token
-    claims = mesh.auth.validate_token(
-        token.token, required_scopes=["code_fix:read"]
-    )
+    claims = mesh.auth.validate_token(token.token, required_scopes=["code_fix:read"])
     print(f"Token validated. Issuer: {claims['iss']}, Scopes: {claims['scopes']}")
 
     await mesh.stop()

@@ -99,9 +99,7 @@ class TestHealthScoreRouting:
     def test_health_score_strategy_prefers_healthy_agent(self) -> None:
         registry = AgentRegistry(health_interval=600.0)
         for name in ("healthy", "degraded", "sick"):
-            registry.register(
-                AgentCard(name=name, capabilities=["compute"])
-            )
+            registry.register(AgentCard(name=name, capabilities=["compute"]))
         registry.agents["healthy"].health_score = 0.95
         registry.agents["degraded"].health_score = 0.50
         registry.agents["sick"].health_score = 0.10

@@ -116,18 +116,14 @@ class WorkflowCoordinator:
 
             try:
                 if timeout is not None:
-                    elapsed = (
-                        datetime.now(UTC) - result.started_at
-                    ).total_seconds()
+                    elapsed = (datetime.now(UTC) - result.started_at).total_seconds()
                     remaining = max(0.0, timeout - elapsed)
                     level_results = await asyncio.wait_for(
                         asyncio.gather(*coros, return_exceptions=True),
                         timeout=remaining,
                     )
                 else:
-                    level_results = await asyncio.gather(
-                        *coros, return_exceptions=True
-                    )
+                    level_results = await asyncio.gather(*coros, return_exceptions=True)
             except TimeoutError:
                 timed_out = True
                 # Mark incomplete tasks in this level as cancelled

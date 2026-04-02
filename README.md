@@ -267,6 +267,16 @@ a2a-mesh/
 
 ---
 
+## Demo
+
+Run the offline walkthrough with:
+
+```bash
+uv run python examples/demo.py
+```
+
+For end-to-end workflow orchestration examples, see `examples/`.
+
 ## Development
 
 ```bash

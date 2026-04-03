@@ -40,7 +40,7 @@ def _deserialize_agent(payload: str) -> RegisteredAgent:
 def _load_redis_client(redis_url: str) -> Any:
     """Create a synchronous Redis client without importing redis eagerly."""
     try:
-        import redis  # type: ignore[import-not-found]
+        import redis
     except ModuleNotFoundError as exc:  # pragma: no cover - exercised in docs
         raise RuntimeError(
             "Redis support requires the optional 'redis' dependency."

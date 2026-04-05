@@ -33,6 +33,7 @@ from a2a_mesh.exceptions import (
     TokenExpiredError,
     WorkflowError,
 )
+from a2a_mesh.health import HealthScorer
 from a2a_mesh.mesh import Mesh
 from a2a_mesh.models import (
     AgentCard,
@@ -79,6 +80,7 @@ __all__ = [
     # Components
     "AgentRegistry",
     "AuthManager",
+    "HealthScorer",
     "MeshTracer",
     "RedisAgentRegistry",
     "Router",

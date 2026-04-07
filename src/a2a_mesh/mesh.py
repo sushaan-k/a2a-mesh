@@ -186,11 +186,17 @@ class Mesh:
         task.error = "Task cancelled"
         return task
 
-    async def execute_workflow(self, workflow: Workflow) -> WorkflowResult:
+    async def execute_workflow(
+        self,
+        workflow: Workflow,
+        timeout: float | None = None,
+    ) -> WorkflowResult:
         """Execute a multi-agent workflow.
 
         Args:
             workflow: The workflow DAG to execute.
+            timeout: Optional timeout in seconds. When reached, the workflow
+                returns partial results for completed tasks.
 
         Returns:
             The workflow result containing all task outputs.
@@ -200,7 +206,7 @@ class Mesh:
             "workflow",
             attributes={"workflow_id": workflow.workflow_id},
         ) as span:
-            result = await self.coordinator.execute(workflow)
+            result = await self.coordinator.execute(workflow, timeout=timeout)
             span.cost = result.total_cost
             return result
 

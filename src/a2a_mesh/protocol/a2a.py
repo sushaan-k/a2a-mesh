@@ -7,6 +7,7 @@ updates via Server-Sent Events.
 
 from __future__ import annotations
 
+from enum import IntEnum
 from typing import Any
 
 import httpx
@@ -16,11 +17,39 @@ from a2a_mesh.exceptions import JsonRpcError, ProtocolError
 
 logger = get_logger(__name__)
 
-# JSON-RPC 2.0 error codes
-PARSE_ERROR = -32700
-INVALID_REQUEST = -32600
-METHOD_NOT_FOUND = -32601
-INTERNAL_ERROR = -32603
+
+class ErrorCode(IntEnum):
+    """Standard JSON-RPC and custom a2a-mesh error codes.
+
+    Standard JSON-RPC 2.0 codes live in the -32xxx range. Custom a2a-mesh
+    codes use the -31xxx range to avoid collisions.
+    """
+
+    # Standard JSON-RPC 2.0 codes
+    PARSE_ERROR = -32700
+    INVALID_REQUEST = -32600
+    METHOD_NOT_FOUND = -32601
+    INVALID_PARAMS = -32602
+    INTERNAL_ERROR = -32603
+
+    # Custom a2a-mesh codes
+    RATE_LIMITED = -31000
+    AGENT_NOT_FOUND = -31001
+    AGENT_UNAVAILABLE = -31002
+    TASK_NOT_FOUND = -31003
+    TASK_TIMEOUT = -31004
+    CAPABILITY_MISMATCH = -31005
+    AUTH_REQUIRED = -31006
+    AUTH_INVALID = -31007
+    BUDGET_EXCEEDED = -31008
+    WORKFLOW_CYCLE = -31009
+
+
+# Backwards-compatible aliases for the standard JSON-RPC codes
+PARSE_ERROR = ErrorCode.PARSE_ERROR
+INVALID_REQUEST = ErrorCode.INVALID_REQUEST
+METHOD_NOT_FOUND = ErrorCode.METHOD_NOT_FOUND
+INTERNAL_ERROR = ErrorCode.INTERNAL_ERROR
 
 
 class A2AClient:

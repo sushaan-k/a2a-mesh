@@ -52,6 +52,7 @@ from a2a_mesh.models import (
     Workflow,
     WorkflowResult,
 )
+from a2a_mesh.protocol.a2a import ErrorCode
 from a2a_mesh.registry import AgentRegistry, RedisAgentRegistry
 from a2a_mesh.router import Router
 from a2a_mesh.tracer import MeshTracer
@@ -93,6 +94,7 @@ __all__ = [
     "CyclicDependencyError",
     "HealthCheckFailedError",
     "InsufficientScopeError",
+    "ErrorCode",
     "JsonRpcError",
     "MeshError",
     "NoCapableAgentError",

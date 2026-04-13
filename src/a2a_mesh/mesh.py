@@ -191,6 +191,7 @@ class Mesh:
             TaskStatus.COMPLETED,
             TaskStatus.FAILED,
             TaskStatus.CANCELLED,
+            TaskStatus.TIMED_OUT,
         }:
             return task
 

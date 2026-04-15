@@ -44,9 +44,7 @@ class TestCapabilitiesMatch:
 
     def test_unversioned_required_matches_versioned_advertised(self) -> None:
         """Requesting 'summarization' matches agents with 'summarization@v2'."""
-        assert _capabilities_match(
-            ["summarization"], ["summarization@v2"]
-        )
+        assert _capabilities_match(["summarization"], ["summarization@v2"])
 
     def test_unversioned_required_matches_unversioned_advertised(self) -> None:
         assert _capabilities_match(["summarization"], ["summarization"])
@@ -63,12 +61,8 @@ class TestVersionedRouting:
 
     def test_route_to_versioned_agent(self) -> None:
         registry = AgentRegistry(health_interval=600.0)
-        registry.register(
-            AgentCard(name="agent-v1", capabilities=["summarization@v1"])
-        )
-        registry.register(
-            AgentCard(name="agent-v2", capabilities=["summarization@v2"])
-        )
+        registry.register(AgentCard(name="agent-v1", capabilities=["summarization@v1"]))
+        registry.register(AgentCard(name="agent-v2", capabilities=["summarization@v2"]))
 
         router = Router(registry)
         task = Task(name="t", required_capabilities=["summarization@v2"])
@@ -77,12 +71,8 @@ class TestVersionedRouting:
 
     def test_unversioned_request_matches_both(self) -> None:
         registry = AgentRegistry(health_interval=600.0)
-        registry.register(
-            AgentCard(name="agent-v1", capabilities=["summarization@v1"])
-        )
-        registry.register(
-            AgentCard(name="agent-v2", capabilities=["summarization@v2"])
-        )
+        registry.register(AgentCard(name="agent-v1", capabilities=["summarization@v1"]))
+        registry.register(AgentCard(name="agent-v2", capabilities=["summarization@v2"]))
 
         router = Router(registry)
         task = Task(name="t", required_capabilities=["summarization"])
@@ -99,14 +89,10 @@ class TestVersionedRouting:
             )
         )
         # Exact version match
-        agents = registry.find_by_capability(
-            ["summarization@v2"], healthy_only=False
-        )
+        agents = registry.find_by_capability(["summarization@v2"], healthy_only=False)
         assert len(agents) == 1
         assert agents[0].card.name == "multi-cap"
 
         # Wrong version
-        agents = registry.find_by_capability(
-            ["summarization@v3"], healthy_only=False
-        )
+        agents = registry.find_by_capability(["summarization@v3"], healthy_only=False)
         assert len(agents) == 0

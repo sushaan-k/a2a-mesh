@@ -212,7 +212,9 @@ def create_gateway(
 
         if not rate_limiter.allow(client_ip):
             return JSONResponse(
-                build_jsonrpc_error(None, ErrorCode.RATE_LIMITED, "Rate limit exceeded"),
+                build_jsonrpc_error(
+                    None, ErrorCode.RATE_LIMITED, "Rate limit exceeded"
+                ),
                 status_code=429,
             )
 
@@ -287,7 +289,9 @@ def create_gateway(
 
             if not rate_limiter.allow(client_ip):
                 await websocket.send_json(
-                    build_jsonrpc_error(None, ErrorCode.RATE_LIMITED, "Rate limit exceeded")
+                    build_jsonrpc_error(
+                        None, ErrorCode.RATE_LIMITED, "Rate limit exceeded"
+                    )
                 )
                 continue
 

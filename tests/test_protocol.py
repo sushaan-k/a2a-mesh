@@ -9,6 +9,7 @@ import respx
 from a2a_mesh.exceptions import JsonRpcError, ProtocolError
 from a2a_mesh.protocol.a2a import (
     A2AClient,
+    ErrorCode,
     build_jsonrpc_error,
     build_jsonrpc_response,
 )
@@ -158,6 +159,56 @@ class TestJsonRpcHelpers:
     def test_build_error_response_null_id(self) -> None:
         resp = build_jsonrpc_error(None, -32700, "Parse error")
         assert resp["id"] is None
+
+
+class TestErrorCode:
+    """Tests for the structured ErrorCode enum."""
+
+    def test_standard_jsonrpc_codes_present(self) -> None:
+        assert ErrorCode.PARSE_ERROR == -32700
+        assert ErrorCode.INVALID_REQUEST == -32600
+        assert ErrorCode.METHOD_NOT_FOUND == -32601
+        assert ErrorCode.INVALID_PARAMS == -32602
+        assert ErrorCode.INTERNAL_ERROR == -32603
+
+    def test_custom_mesh_codes_present(self) -> None:
+        assert ErrorCode.RATE_LIMITED == -31000
+        assert ErrorCode.AGENT_NOT_FOUND == -31001
+        assert ErrorCode.AGENT_UNAVAILABLE == -31002
+        assert ErrorCode.TASK_NOT_FOUND == -31003
+        assert ErrorCode.TASK_TIMEOUT == -31004
+        assert ErrorCode.CAPABILITY_MISMATCH == -31005
+        assert ErrorCode.AUTH_REQUIRED == -31006
+        assert ErrorCode.AUTH_INVALID == -31007
+        assert ErrorCode.BUDGET_EXCEEDED == -31008
+        assert ErrorCode.WORKFLOW_CYCLE == -31009
+
+    def test_error_code_is_int(self) -> None:
+        """ErrorCode values can be used directly as int in JSON-RPC responses."""
+        resp = build_jsonrpc_error(1, ErrorCode.INTERNAL_ERROR, "boom")
+        assert resp["error"]["code"] == -32603
+
+    def test_all_codes_are_negative(self) -> None:
+        for code in ErrorCode:
+            assert code < 0, f"ErrorCode.{code.name} should be negative"
+
+    def test_no_duplicate_values(self) -> None:
+        values = [code.value for code in ErrorCode]
+        assert len(values) == len(set(values))
+
+    def test_backwards_compatible_aliases(self) -> None:
+        """Module-level aliases still work for existing code."""
+        from a2a_mesh.protocol.a2a import (
+            INTERNAL_ERROR,
+            INVALID_REQUEST,
+            METHOD_NOT_FOUND,
+            PARSE_ERROR,
+        )
+
+        assert PARSE_ERROR == ErrorCode.PARSE_ERROR
+        assert INVALID_REQUEST == ErrorCode.INVALID_REQUEST
+        assert METHOD_NOT_FOUND == ErrorCode.METHOD_NOT_FOUND
+        assert INTERNAL_ERROR == ErrorCode.INTERNAL_ERROR
 
 
 class TestMCPBridge:

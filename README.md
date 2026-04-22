@@ -1,27 +1,51 @@
 # a2a-mesh
 
-[![CI](https://github.com/sushaan-k/a2a-mesh/actions/workflows/ci.yml/badge.svg)](https://github.com/sushaan-k/a2a-mesh/actions/workflows/ci.yml)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://python.org)
+[![CI](https://github.com/sushaan-k/a2a-mesh/actions/workflows/ci.yml/badge.svg)](https://github.com/sushaan-k/a2a-mesh/actions)
+[![PyPI](https://img.shields.io/pypi/v/a2a-mesh.svg)](https://pypi.org/project/a2a-mesh/)
+[![PyPI Downloads](https://img.shields.io/pypi/dm/a2a-mesh.svg)](https://pypi.org/project/a2a-mesh/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+[![A2A Protocol](https://img.shields.io/badge/A2A-protocol-blueviolet.svg)](https://google.github.io/A2A/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![PyPI version](https://img.shields.io/pypi/v/a2a-mesh.svg)](https://pypi.org/project/a2a-mesh/)
 
 **Lightweight multi-agent coordination runtime using the A2A protocol.**
 
-The agent protocol stack is standardized --- MCP for tools, A2A for agent-to-agent communication --- but there is no runtime that ties it together. `a2a-mesh` fills that gap: a minimal, async-native Python runtime that handles discovery, routing, orchestration, auth, and observability for multi-agent systems.
+A2A-mesh is a minimal, async-native Python runtime that implements Google's Agent-to-Agent (A2A) protocol with semantic routing, DAG workflows, and full observability. It bridges the gap between standardized agent protocols (MCP for tools, A2A for agent discovery) and production-grade orchestration.
 
-Think of it as **Kubernetes for agents**, but small enough to read in an afternoon.
+> Think of it as **Kubernetes for agents**—built for async teams, fast to understand, and small enough to read in an afternoon.
 
----
+## Why a2a-mesh?
 
-## At a Glance
-
-| Problem | a2a-mesh Solution |
+| Problem | Solution |
 |---|---|
-| Agents can't find each other | **Registry** with capability-based discovery and health monitoring |
-| No intelligent task routing | **Smart Router** with cost-aware, latency-aware, load-balanced routing |
-| Building multi-agent workflows is painful | **Workflow DAGs** with fan-out, fan-in, and consensus |
-| Agent-to-agent auth is unsolved | **Scoped JWT tokens** with audit logging |
-| No visibility into agent interactions | **OpenTelemetry tracing** with per-span cost tracking |
+| Agents can't find each other | **Dynamic registry** with capability-based discovery and health monitoring |
+| No intelligent task routing | **Smart router** with cost-aware, latency-aware, and load-balanced strategies |
+| Building multi-agent workflows is painful | **Workflow DAGs** with fan-out, fan-in, and multi-agent consensus |
+| Agent-to-agent auth is unsolved | **Scoped JWT tokens** with full audit trail |
+| No visibility into agent interactions | **OpenTelemetry tracing** with per-operation cost tracking |
+
+## A2A Protocol Compliance
+
+a2a-mesh fully implements Google's A2A specification with extensions for semantic routing:
+
+| A2A Feature | Status |
+|---|---|
+| Agent Card (discovery) | ✅ |
+| Task lifecycle (submitted → working → completed → failed) | ✅ |
+| Streaming responses (SSE) | ✅ |
+| Push notifications (webhooks) | ✅ |
+| Multi-turn tasks | ✅ |
+| Structured outputs | ✅ |
+| Agent authentication | ✅ |
+| **Semantic routing extension** | ✅ (a2a-mesh) |
+
+## Comparison with Alternatives
+
+| Framework | Dynamic Discovery | Semantic Routing | DAG Workflows | OTel | Protocol Standard |
+|---|---|---|---|---|---|
+| LangGraph | ❌ | ❌ | ✅ | Partial | ❌ |
+| AutoGen | ❌ | ❌ | ❌ | ❌ | ❌ |
+| CrewAI | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **a2a-mesh** | ✅ | ✅ | ✅ | ✅ | ✅ A2A |
 
 ## Quick Start
 
@@ -101,8 +125,6 @@ a2a-mesh traces --last 10
 a2a-mesh dashboard --host 0.0.0.0
 ```
 
----
-
 ## Architecture
 
 ```mermaid
@@ -141,8 +163,6 @@ graph TB
 | **HTTP/WS Gateway** | Starlette-based JSON-RPC 2.0 ingress with rate limiting over HTTP or WebSocket |
 | **MCP Bridge** | Connects agents to MCP tool servers |
 
----
-
 ## Routing Strategies
 
 ```python
@@ -164,8 +184,6 @@ policy = RoutingPolicy(
 
 # For custom ranking, pass a `strategy_hook` callable to `Router`.
 ```
-
----
 
 ## Workflow DAGs
 
@@ -189,8 +207,6 @@ workflow = Workflow(
     },
 )
 ```
-
----
 
 ## Authentication
 
@@ -216,8 +232,6 @@ for entry in auth.get_audit_log():
     print(f"{entry.timestamp} {entry.action} {entry.issuer} -> {entry.subject}")
 ```
 
----
-
 ## Observability
 
 Built-in OpenTelemetry tracing with cost tracking:
@@ -235,8 +249,6 @@ print(f"Total spend: ${mesh.tracer.total_cost():.4f}")
 ```
 
 The mesh gateway exposes a `/traces` endpoint, and the built-in dashboard provides a web UI at `/`.
-
----
 
 ## Project Structure
 
@@ -264,8 +276,6 @@ a2a-mesh/
 │   └── customer_support.py
 └── docs/
 ```
-
----
 
 ## Demo
 
@@ -296,8 +306,6 @@ ruff format src/ tests/
 mypy src/a2a_mesh/
 ```
 
----
-
 ## Contributing
 
 Contributions are welcome. Please open an issue to discuss significant changes before submitting a pull request.
@@ -307,8 +315,6 @@ Contributions are welcome. Please open an issue to discuss significant changes b
 3. Write tests for your changes
 4. Ensure all checks pass (`pytest`, `ruff`, `mypy`)
 5. Submit a pull request
-
----
 
 ## License
 

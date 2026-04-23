@@ -12,6 +12,7 @@ import time
 from collections import OrderedDict
 from collections.abc import AsyncGenerator, Callable, Coroutine
 from contextlib import asynccontextmanager
+from dataclasses import asdict
 from typing import TYPE_CHECKING, Any
 
 from starlette.applications import Starlette
@@ -36,6 +37,7 @@ from a2a_mesh.protocol.a2a import (
 if TYPE_CHECKING:
     from a2a_mesh.auth import AuthManager
     from a2a_mesh.mesh import Mesh
+    from a2a_mesh.router import RouteDecision
 
 logger = get_logger(__name__)
 
@@ -403,6 +405,16 @@ async def _dispatch_method(
         task = mesh.cancel_task(str(task_id))
         return task.model_dump(mode="json")
 
+    if method == "tasks/explain":
+        task = Task(
+            name=params.get("name", "dispatch"),
+            agent=params.get("agent", ""),
+            input=params.get("input", ""),
+            required_capabilities=params.get("capabilities", []),
+        )
+        decision = mesh.router.explain_decision(task)
+        return _route_decision_payload(decision)
+
     if method == "agents/list":
         agents = mesh.registry.list_agents()
         return {
@@ -427,3 +439,8 @@ async def _dispatch_method(
         }
 
     raise ProtocolError(f"Unknown method: {method}")
+
+
+def _route_decision_payload(decision: RouteDecision) -> dict[str, Any]:
+    """Convert an explainable route decision to JSON-RPC-safe primitives."""
+    return asdict(decision)

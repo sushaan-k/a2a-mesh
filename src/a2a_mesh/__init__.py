@@ -55,7 +55,7 @@ from a2a_mesh.models import (
 )
 from a2a_mesh.protocol.a2a import ErrorCode
 from a2a_mesh.registry import AgentRegistry, RedisAgentRegistry
-from a2a_mesh.router import Router
+from a2a_mesh.router import RouteCandidate, RouteDecision, Router
 from a2a_mesh.tracer import MeshTracer
 
 __version__ = "0.1.0"
@@ -85,6 +85,8 @@ __all__ = [
     "HealthScorer",
     "MeshTracer",
     "RedisAgentRegistry",
+    "RouteCandidate",
+    "RouteDecision",
     "Router",
     "WorkflowCoordinator",
     # Exceptions

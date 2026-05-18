@@ -327,6 +327,49 @@ class TestRouteExplainability:
         assert explanation[0].agent_name == "versioned-writer"
         assert "matches capabilities: summarization@v2" in explanation[0].reasons
 
+    def test_explain_decision_summarizes_selected_agent(
+        self, populated_registry: AgentRegistry
+    ) -> None:
+        policy = RoutingPolicy(strategy=RoutingStrategy.LEAST_LOAD, max_queue_depth=2)
+        router = Router(populated_registry, policy=policy)
+        populated_registry.agents["research-agent"].current_load = 0
+        populated_registry.agents["analysis-agent"].current_load = 1
+        populated_registry.agents["writing-agent"].current_load = 4
+        task = Task(name="t", required_capabilities=["summarization"])
+
+        decision = router.explain_decision(task)
+
+        assert decision.task_id == task.task_id
+        assert decision.strategy == "least_load"
+        assert decision.selected_agent == "research-agent"
+        assert decision.available_count == 2
+        assert decision.unavailable_count == 1
+        assert isinstance(decision.candidates, tuple)
+
+    def test_explain_decision_reports_all_unavailable(
+        self, populated_registry: AgentRegistry
+    ) -> None:
+        policy = RoutingPolicy(strategy=RoutingStrategy.LEAST_LOAD, max_queue_depth=1)
+        router = Router(populated_registry, policy=policy)
+        for agent in populated_registry.agents.values():
+            agent.current_load = 10
+        task = Task(name="t", required_capabilities=["summarization"])
+
+        decision = router.explain_decision(task)
+
+        assert decision.selected_agent is None
+        assert decision.available_count == 0
+        assert decision.unavailable_count == len(decision.candidates)
+
+    def test_explain_decision_raises_for_no_capable_agent(
+        self, populated_registry: AgentRegistry
+    ) -> None:
+        router = Router(populated_registry)
+        task = Task(name="t", required_capabilities=["nonexistent_capability"])
+
+        with pytest.raises(NoCapableAgentError):
+            router.explain_decision(task)
+
 
 class TestRouterConcurrencyStress:
     """Concurrency stress tests for the router."""

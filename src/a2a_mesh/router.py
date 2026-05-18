@@ -49,6 +49,18 @@ class RouteCandidate:
     reasons: list[str] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class RouteDecision:
+    """Summary of an explainable routing decision."""
+
+    task_id: str
+    strategy: str
+    selected_agent: str | None
+    candidates: tuple[RouteCandidate, ...]
+    available_count: int
+    unavailable_count: int
+
+
 def _capability_base(capability: str) -> str:
     """Return the unversioned capability name used for explanations."""
     return capability.split("@", 1)[0]
@@ -201,6 +213,20 @@ class Router:
             )
             for index, agent in enumerate(ranked, start=1)
         ]
+
+    def explain_decision(self, task: Task) -> RouteDecision:
+        """Return a compact decision summary without dispatching the task."""
+        candidates = self.explain_route(task)
+        available = [candidate for candidate in candidates if candidate.available]
+        selected = available[0].agent_name if available else None
+        return RouteDecision(
+            task_id=task.task_id,
+            strategy=self.policy.strategy.value,
+            selected_agent=selected,
+            candidates=tuple(candidates),
+            available_count=len(available),
+            unavailable_count=len(candidates) - len(available),
+        )
 
     def _find_candidates(self, task: Task) -> list[RegisteredAgent]:
         """Find agents capable of handling the task.

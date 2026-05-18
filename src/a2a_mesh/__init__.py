@@ -19,6 +19,7 @@ from a2a_mesh.exceptions import (
     AgentAlreadyRegisteredError,
     AgentNotFoundError,
     AuthError,
+    BudgetExceededError,
     ConsensusNotReachedError,
     CyclicDependencyError,
     HealthCheckFailedError,
@@ -33,6 +34,7 @@ from a2a_mesh.exceptions import (
     TokenExpiredError,
     WorkflowError,
 )
+from a2a_mesh.health import HealthScorer
 from a2a_mesh.mesh import Mesh
 from a2a_mesh.models import (
     AgentCard,
@@ -51,6 +53,7 @@ from a2a_mesh.models import (
     Workflow,
     WorkflowResult,
 )
+from a2a_mesh.protocol.a2a import ErrorCode
 from a2a_mesh.registry import AgentRegistry, RedisAgentRegistry
 from a2a_mesh.router import Router
 from a2a_mesh.tracer import MeshTracer
@@ -79,6 +82,7 @@ __all__ = [
     # Components
     "AgentRegistry",
     "AuthManager",
+    "HealthScorer",
     "MeshTracer",
     "RedisAgentRegistry",
     "Router",
@@ -87,10 +91,12 @@ __all__ = [
     "AgentAlreadyRegisteredError",
     "AgentNotFoundError",
     "AuthError",
+    "BudgetExceededError",
     "ConsensusNotReachedError",
     "CyclicDependencyError",
     "HealthCheckFailedError",
     "InsufficientScopeError",
+    "ErrorCode",
     "JsonRpcError",
     "MeshError",
     "NoCapableAgentError",

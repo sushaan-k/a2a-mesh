@@ -16,7 +16,7 @@ import uvicorn
 from a2a_mesh._logging import configure_logging, get_logger
 from a2a_mesh.auth import AuthManager
 from a2a_mesh.coordinator import WorkflowCoordinator
-from a2a_mesh.exceptions import ProtocolError
+from a2a_mesh.exceptions import BudgetExceededError, ProtocolError
 from a2a_mesh.models import (
     AgentCard,
     RegisteredAgent,
@@ -133,18 +133,23 @@ class Mesh:
         self,
         task: str | Task,
         required_capabilities: list[str] | None = None,
+        max_cost: float | None = None,
     ) -> Any:
         """Dispatch a task to the best available agent.
 
         Args:
             task: Either a string prompt or a Task object.
             required_capabilities: Required agent capabilities.
+            max_cost: Optional cost budget. If the agent's cost_per_task
+                exceeds this value, a ``BudgetExceededError`` is raised
+                before execution.
 
         Returns:
             The task result from the selected agent.
 
         Raises:
             NoCapableAgentError: If no agent can handle the task.
+            BudgetExceededError: If the task would exceed *max_cost*.
         """
         if isinstance(task, str):
             task_obj = Task(
@@ -154,6 +159,14 @@ class Mesh:
             )
         else:
             task_obj = task
+
+        # Pre-flight budget check: estimate cost from the routed agent
+        if max_cost is not None:
+            agent = self.router.route(task_obj)
+            if agent.card.cost_per_task > max_cost:
+                raise BudgetExceededError(
+                    budget=max_cost, spent=agent.card.cost_per_task
+                )
 
         self._tasks[task_obj.task_id] = task_obj
         async with self.tracer.trace_task(
@@ -178,6 +191,7 @@ class Mesh:
             TaskStatus.COMPLETED,
             TaskStatus.FAILED,
             TaskStatus.CANCELLED,
+            TaskStatus.TIMED_OUT,
         }:
             return task
 
@@ -186,11 +200,20 @@ class Mesh:
         task.error = "Task cancelled"
         return task
 
-    async def execute_workflow(self, workflow: Workflow) -> WorkflowResult:
+    async def execute_workflow(
+        self,
+        workflow: Workflow,
+        timeout: float | None = None,
+        max_cost: float | None = None,
+    ) -> WorkflowResult:
         """Execute a multi-agent workflow.
 
         Args:
             workflow: The workflow DAG to execute.
+            timeout: Optional timeout in seconds. When reached, the workflow
+                returns partial results for completed tasks.
+            max_cost: Optional cost budget. When cumulative task cost exceeds
+                this value a ``BudgetExceededError`` is raised.
 
         Returns:
             The workflow result containing all task outputs.
@@ -200,7 +223,9 @@ class Mesh:
             "workflow",
             attributes={"workflow_id": workflow.workflow_id},
         ) as span:
-            result = await self.coordinator.execute(workflow)
+            result = await self.coordinator.execute(
+                workflow, timeout=timeout, max_cost=max_cost
+            )
             span.cost = result.total_cost
             return result
 

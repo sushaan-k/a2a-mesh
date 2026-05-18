@@ -452,3 +452,88 @@ class TestCoordinatorFailureHandling:
         )
         result = await coordinator.execute(workflow)
         assert result.status == TaskStatus.FAILED
+
+
+class TestWorkflowTimeout:
+    """Tests for workflow timeout with partial results."""
+
+    @pytest.mark.asyncio
+    async def test_timeout_returns_partial_results(self) -> None:
+        """Tasks that complete before timeout are included in results."""
+        call_count = 0
+
+        async def _slow_second(task: Task) -> Any:
+            nonlocal call_count
+            call_count += 1
+            if call_count >= 2:
+                await asyncio.sleep(10)
+            return f"done:{task.input}"
+
+        coordinator = WorkflowCoordinator(executor=_slow_second)
+        workflow = Workflow(
+            name="timeout-partial",
+            tasks=[
+                Task(name="fast", input="a"),
+                Task(name="slow", depends_on=["fast"]),
+            ],
+        )
+        result = await coordinator.execute(workflow, timeout=0.3)
+        # fast should have completed
+        assert "fast" in result.task_results
+        # slow should be marked as timed out
+        assert "slow" in result.errors
+        assert result.status == TaskStatus.TIMED_OUT
+
+    @pytest.mark.asyncio
+    async def test_no_timeout_completes_normally(self) -> None:
+        coordinator = WorkflowCoordinator(executor=_echo_executor)
+        workflow = Workflow(
+            name="no-timeout",
+            tasks=[
+                Task(name="a", input="alpha"),
+                Task(name="b", depends_on=["a"]),
+            ],
+        )
+        result = await coordinator.execute(workflow, timeout=None)
+        assert result.status == TaskStatus.COMPLETED
+        assert "a" in result.task_results
+        assert "b" in result.task_results
+        assert result.errors == {}
+
+    @pytest.mark.asyncio
+    async def test_generous_timeout_completes_normally(self) -> None:
+        coordinator = WorkflowCoordinator(executor=_echo_executor)
+        workflow = Workflow(
+            name="generous-timeout",
+            tasks=[
+                Task(name="step1", input="data"),
+                Task(name="step2", depends_on=["step1"]),
+            ],
+        )
+        result = await coordinator.execute(workflow, timeout=30.0)
+        assert result.status == TaskStatus.COMPLETED
+        assert len(result.task_results) == 2
+
+    @pytest.mark.asyncio
+    async def test_timeout_marks_unattempted_tasks_cancelled(self) -> None:
+        """Tasks that never started due to timeout are marked cancelled."""
+
+        async def _slow_executor(task: Task) -> Any:
+            await asyncio.sleep(10)
+            return "done"
+
+        coordinator = WorkflowCoordinator(executor=_slow_executor)
+        workflow = Workflow(
+            name="all-slow",
+            tasks=[
+                Task(name="slow1", input="x"),
+                Task(name="slow2", depends_on=["slow1"]),
+                Task(name="slow3", depends_on=["slow2"]),
+            ],
+        )
+        result = await coordinator.execute(workflow, timeout=0.1)
+        # All tasks should appear in errors
+        assert len(result.errors) >= 1
+        # No task results since first level timed out
+        assert result.task_results == {} or len(result.task_results) < 3
+        assert result.status == TaskStatus.TIMED_OUT

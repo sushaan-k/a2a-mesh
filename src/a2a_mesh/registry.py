@@ -37,6 +37,45 @@ def _deserialize_agent(payload: str) -> RegisteredAgent:
     return RegisteredAgent.model_validate_json(payload)
 
 
+def _parse_capability(cap: str) -> tuple[str, str | None]:
+    """Split a capability string into (name, version).
+
+    ``"summarization@v2"`` -> ``("summarization", "v2")``
+    ``"web_search"``       -> ``("web_search", None)``
+    """
+    if "@" in cap:
+        name, version = cap.split("@", 1)
+        return name, version
+    return cap, None
+
+
+def _capabilities_match(
+    required: Sequence[str],
+    advertised: Sequence[str],
+) -> bool:
+    """Check whether *advertised* satisfies every entry in *required*.
+
+    When a required capability includes a version (``cap@v2``), the
+    advertised list must contain exactly that versioned capability. When
+    no version is specified, any version of that capability (or the
+    unversioned form) matches.
+    """
+    # Build a lookup: base_name -> set of versions (None means unversioned)
+    adv_map: dict[str, set[str | None]] = {}
+    for cap in advertised:
+        name, ver = _parse_capability(cap)
+        adv_map.setdefault(name, set()).add(ver)
+
+    for cap in required:
+        name, ver = _parse_capability(cap)
+        versions = adv_map.get(name)
+        if versions is None:
+            return False
+        if ver is not None and ver not in versions:
+            return False
+    return True
+
+
 def _load_redis_client(redis_url: str) -> Any:
     """Create a synchronous Redis client without importing redis eagerly."""
     try:
@@ -155,24 +194,26 @@ class AgentRegistry:
     ) -> list[RegisteredAgent]:
         """Find agents that support all of the given capabilities.
 
+        Capabilities can include an optional version suffix using ``@``
+        notation (e.g. ``"summarization@v2"``). When a version is specified
+        the agent must advertise that exact versioned capability. When no
+        version is specified, any version (or unversioned) matches.
+
         Args:
-            capabilities: Required capability tags.
+            capabilities: Required capability tags, optionally versioned.
             healthy_only: If True, exclude unhealthy agents.
 
         Returns:
             List of matching registered agents, sorted by current load
             (ascending).
         """
-        required = set(capabilities)
         matches: list[RegisteredAgent] = []
 
         for agent in self.agents.values():
-            agent_caps = set(agent.card.capabilities)
-            if not required.issubset(agent_caps):
-                continue
             if healthy_only and agent.status == AgentStatus.UNHEALTHY:
                 continue
-            matches.append(agent)
+            if _capabilities_match(capabilities, agent.card.capabilities):
+                matches.append(agent)
 
         matches.sort(key=lambda a: a.current_load)
         return matches

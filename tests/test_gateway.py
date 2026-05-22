@@ -166,6 +166,50 @@ class TestJsonRpcEndpoint:
         assert data["result"]["status"] == TaskStatus.COMPLETED
         assert data["result"]["task_id"]
 
+    def test_tasks_explain_method(self, client: TestClient) -> None:
+        resp = client.post(
+            "/rpc",
+            json={
+                "jsonrpc": "2.0",
+                "id": 14,
+                "method": "tasks/explain",
+                "params": {
+                    "input": "preview this route",
+                    "capabilities": ["testing"],
+                },
+            },
+        )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        result = data["result"]
+        assert result["selected_agent"] == "test-agent"
+        assert result["strategy"] == "round_robin"
+        assert result["available_count"] == 1
+        assert result["unavailable_count"] == 0
+        assert result["candidates"][0]["agent_name"] == "test-agent"
+        assert result["candidates"][0]["available"] is True
+        assert "status=unknown" in result["candidates"][0]["reasons"]
+
+    def test_tasks_explain_no_capable_agent(self, client: TestClient) -> None:
+        resp = client.post(
+            "/rpc",
+            json={
+                "jsonrpc": "2.0",
+                "id": 15,
+                "method": "tasks/explain",
+                "params": {
+                    "input": "preview this route",
+                    "capabilities": ["missing"],
+                },
+            },
+        )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "error" in data
+        assert "No agent found" in data["error"]["message"]
+
     def test_tasks_get_and_cancel_methods(self, client: TestClient) -> None:
         send_resp = client.post(
             "/rpc",

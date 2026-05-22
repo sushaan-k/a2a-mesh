@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import click
 
@@ -141,6 +142,84 @@ def dispatch(task_input: str, capabilities: tuple[str, ...], mesh_url: str) -> N
                 sys.exit(1)
 
     asyncio.run(_dispatch())
+
+
+@cli.command()
+@click.argument("task_input")
+@click.option("--capabilities", "-c", multiple=True, help="Required capabilities")
+@click.option("--agent", default="", help="Specific agent name to evaluate")
+@click.option("--mesh-url", default="http://localhost:8080", help="Mesh gateway URL")
+@click.option("--json", "json_output", is_flag=True, help="Print raw JSON result")
+def explain(
+    task_input: str,
+    capabilities: tuple[str, ...],
+    agent: str,
+    mesh_url: str,
+    json_output: bool,
+) -> None:
+    """Preview routing for a task without dispatching it."""
+    import asyncio
+
+    import httpx
+
+    async def _explain() -> None:
+        payload = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tasks/explain",
+            "params": {
+                "input": task_input,
+                "agent": agent,
+                "capabilities": list(capabilities),
+            },
+        }
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(f"{mesh_url}/rpc", json=payload)
+            if resp.status_code != 200:
+                click.echo(f"Error: {resp.text}", err=True)
+                sys.exit(1)
+
+            data = resp.json()
+            if "error" in data:
+                message = data.get("error", {}).get("message", "Route explain failed")
+                click.echo(f"Error: {message}", err=True)
+                sys.exit(1)
+
+            result = data.get("result", {})
+            if json_output:
+                click.echo(json.dumps(result, indent=2))
+                return
+
+            _echo_route_decision(result)
+
+    asyncio.run(_explain())
+
+
+def _echo_route_decision(result: dict[str, Any]) -> None:
+    """Render a compact route decision for CLI users."""
+    selected = result.get("selected_agent") or "none"
+    click.echo(f"Strategy: {result.get('strategy', 'unknown')}")
+    click.echo(f"Selected: {selected}")
+    click.echo(
+        "Candidates: "
+        f"{result.get('available_count', 0)} available, "
+        f"{result.get('unavailable_count', 0)} unavailable"
+    )
+
+    for candidate in result.get("candidates", []):
+        name = candidate.get("agent_name", "unknown")
+        marker = "*" if name == selected else " "
+        availability = "available" if candidate.get("available") else "at capacity"
+        metric = candidate.get("strategy_value")
+        metric_text = "" if metric is None else f" metric={metric}"
+        click.echo(
+            f"{marker} #{candidate.get('rank', '?')} {name} "
+            f"[{availability}]{metric_text}"
+        )
+        reasons = candidate.get("reasons", [])
+        if reasons:
+            click.echo(f"    {'; '.join(str(reason) for reason in reasons)}")
 
 
 @cli.command()

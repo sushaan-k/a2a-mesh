@@ -118,6 +118,9 @@ a2a-mesh agents
 # Dispatch a task
 a2a-mesh dispatch "Analyze Q4 earnings for AAPL" -c financial_analysis
 
+# Preview which agent would receive a task without dispatching it
+a2a-mesh explain "Analyze Q4 earnings for AAPL" -c financial_analysis
+
 # View traces
 a2a-mesh traces --last 10
 
@@ -184,6 +187,12 @@ policy = RoutingPolicy(
 
 # For custom ranking, pass a `strategy_hook` callable to `Router`.
 ```
+
+To debug routing before work is sent to an agent, call
+`Router.explain_decision(task)` in Python or the gateway's `tasks/explain`
+JSON-RPC method. The CLI wraps this as `a2a-mesh explain`, showing the selected
+agent, ranked candidates, capacity state, and strategy-specific reasons without
+incrementing load or dispatching the task.
 
 ## Workflow DAGs
 

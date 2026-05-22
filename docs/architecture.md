@@ -85,6 +85,12 @@ The router also accepts a user-supplied routing hook for custom ranking or selec
 
 The router also supports `route_multi` for fan-out, returning up to N agents sorted by the active strategy.
 
+For operations and CI previews, the same ranking logic can be run in read-only
+mode through `Router.explain_decision(task)` or the gateway's `tasks/explain`
+JSON-RPC method. Route explanations include the selected agent, all ranked
+candidates, queue availability, strategy metric values, and human-readable
+reasons, but they do not mutate load counters or contact agents.
+
 ### Workflow Coordinator
 
 Orchestrates multi-step agent workflows defined as DAGs. The execution model:
@@ -128,6 +134,10 @@ Starlette ASGI application exposing:
 | `/rpc` | POST | JSON-RPC 2.0 dispatch |
 | `/ws` | WS | JSON-RPC 2.0 dispatch over WebSocket |
 | `/traces` | GET | Recent span records |
+
+Supported JSON-RPC methods include `tasks/send`, `tasks/get`, `tasks/cancel`,
+`tasks/explain`, `agents/list`, and `agents/register`. `tasks/explain` is
+intended for dry-run routing previews before a client commits work to the mesh.
 
 Includes a token-bucket rate limiter keyed by client IP.
 

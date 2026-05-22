@@ -48,6 +48,13 @@ class TestCli:
         assert result.exit_code == 0
         assert "--capabilities" in result.output
 
+    def test_explain_help(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(cli, ["explain", "--help"])
+        assert result.exit_code == 0
+        assert "--capabilities" in result.output
+        assert "--agent" in result.output
+
     def test_traces_help(self) -> None:
         runner = CliRunner()
         result = runner.invoke(cli, ["traces", "--help"])
@@ -249,6 +256,98 @@ class TestCliDispatchCommand:
         runner = CliRunner()
         result = runner.invoke(cli, ["dispatch", "do something"])
         assert result.exit_code != 0
+
+
+class TestCliExplainCommand:
+    """Tests for the explain command."""
+
+    @respx.mock
+    def test_explain_success(self) -> None:
+        """explain command renders an explainable routing decision."""
+        respx.post("http://localhost:8080/rpc").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "result": {
+                        "task_id": "task-1",
+                        "strategy": "least_cost",
+                        "selected_agent": "cheap-agent",
+                        "available_count": 1,
+                        "unavailable_count": 1,
+                        "candidates": [
+                            {
+                                "agent_name": "cheap-agent",
+                                "rank": 1,
+                                "available": True,
+                                "strategy_value": 0.01,
+                                "reasons": [
+                                    "status=healthy",
+                                    "cost_per_task=$0.0100",
+                                ],
+                            },
+                            {
+                                "agent_name": "busy-agent",
+                                "rank": 2,
+                                "available": False,
+                                "strategy_value": 0.02,
+                                "reasons": ["status=healthy", "load=10/10"],
+                            },
+                        ],
+                    }
+                },
+            )
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["explain", "summarize this", "-c", "summary"])
+
+        assert result.exit_code == 0
+        assert "Strategy: least_cost" in result.output
+        assert "Selected: cheap-agent" in result.output
+        assert "* #1 cheap-agent [available] metric=0.01" in result.output
+        assert "  #2 busy-agent [at capacity] metric=0.02" in result.output
+
+    @respx.mock
+    def test_explain_json_output(self) -> None:
+        """explain --json prints the raw result payload."""
+        respx.post("http://localhost:8080/rpc").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "result": {
+                        "task_id": "task-2",
+                        "strategy": "round_robin",
+                        "selected_agent": "agent-a",
+                        "available_count": 1,
+                        "unavailable_count": 0,
+                        "candidates": [],
+                    }
+                },
+            )
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["explain", "route me", "--json"])
+
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["selected_agent"] == "agent-a"
+
+    @respx.mock
+    def test_explain_rpc_error_exits_nonzero(self) -> None:
+        """explain reports JSON-RPC routing errors."""
+        respx.post("http://localhost:8080/rpc").mock(
+            return_value=httpx.Response(
+                200,
+                json={"error": {"code": -32603, "message": "No agent found"}},
+            )
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["explain", "route me", "-c", "missing"])
+
+        assert result.exit_code != 0
+        assert "No agent found" in result.output
 
 
 class TestCliTracesCommand:
